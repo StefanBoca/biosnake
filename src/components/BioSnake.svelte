@@ -17,6 +17,7 @@
   class Cell {
     food: FoodCell = "empty";
     snake: SnakeCell = "empty";
+    connections: Array<string> = [];
 
     constructor() {}
 
@@ -64,6 +65,10 @@
   let step: number;
   let tick_timeout: number;
 
+  function isOutOfBounds(x: number, y: number): boolean {
+    return x < 0 || x > GRID_SIZE - 1 || y < 0 || y > GRID_SIZE - 1;
+  }
+
   function start(): void {
     if (state.status === "running") return;
     if (state.dir === "none") return;
@@ -92,8 +97,52 @@
         }
       }
     }
+
     snake.forEach(([x, y]) => (grid[y][x].snake = "body"));
     grid[snake[0][1]][snake[0][0]].snake = "head";
+
+    function addDir2Pos(x: number, y: number, d: Dir): [number, number] {
+      let [dx, dy] = dir2vec.get(d);
+      return [dx + x, dy + y];
+    }
+
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        grid[y][x].connections = [];
+        if (grid[y][x].snake !== "empty") {
+          // warning, bad code incoming
+          // fun fact: the above comment was written before the following code
+          let [topx, topy] = addDir2Pos(x, y, "up");
+          let [bottomx, bottomy] = addDir2Pos(x, y, "down");
+          let [leftx, lefty] = addDir2Pos(x, y, "left");
+          let [rightx, righty] = addDir2Pos(x, y, "right");
+          if (
+            !isOutOfBounds(topx, topy) &&
+            grid[topy][topx].snake !== "empty"
+          ) {
+            grid[y][x].connections.push("connect-top");
+          }
+          if (
+            !isOutOfBounds(bottomx, bottomy) &&
+            grid[bottomy][bottomx].snake !== "empty"
+          ) {
+            grid[y][x].connections.push("connect-bottom");
+          }
+          if (
+            !isOutOfBounds(leftx, lefty) &&
+            grid[lefty][leftx].snake !== "empty"
+          ) {
+            grid[y][x].connections.push("connect-left");
+          }
+          if (
+            !isOutOfBounds(rightx, righty) &&
+            grid[righty][rightx].snake !== "empty"
+          ) {
+            grid[y][x].connections.push("connect-right");
+          }
+        }
+      }
+    }
   }
 
   function spawnFood(): void {
@@ -122,13 +171,7 @@
     const [dx, dy] = dir2vec.get(state.dir);
     const newHead = [dx + x, y + dy] as [number, number];
 
-    if (
-      newHead[0] < 0 ||
-      newHead[0] > GRID_SIZE - 1 ||
-      newHead[1] < 0 ||
-      newHead[1] > GRID_SIZE - 1
-    ) {
-      // out of bounds
+    if (isOutOfBounds(newHead[0], newHead[1])) {
       state.status = "lost";
       return;
     }
@@ -210,7 +253,9 @@
         {#each row as cell, y}
           <!-- TODO: turn clicked cells into food? -->
           <div
-            class={`w-5 h-5 border border-solid border-white ${cell.value}`}
+            class={`w-10 h-10 rounded-md border border-solid border-white ${
+              cell.value
+            } ${cell.connections.join(" ")}`}
             on:click={() => (grid[x][y].food = "food")}
           />
         {/each}
@@ -227,7 +272,7 @@
 
 <style>
   .empty {
-    @apply bg-gray-900;
+    @apply bg-gray-800;
   }
   .food {
     @apply bg-pink-500;
@@ -237,5 +282,25 @@
   }
   .head {
     @apply bg-green-500;
+  }
+  .connect-top {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top-color: transparent;
+  }
+  .connect-bottom {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-color: transparent;
+  }
+  .connect-left {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left-color: transparent;
+  }
+  .connect-right {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right-color: transparent;
   }
 </style>
