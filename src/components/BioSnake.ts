@@ -1,7 +1,7 @@
 let D = console.log
 
 
-export type State = "stopped" | "running" | "paused" | "lost";
+export type State = "stopped" | "running" | "paused";
 
 type FoodCell = "empty" | "food";
 type SnakeCell = "empty" | "snake_head" | "snake_body";
@@ -61,7 +61,7 @@ export class Grid {
         }
         for (let y = 0; y < this.grid.length; y++) {
             for (let x = 0; x < this.grid.length; x++) {
-                this.grid[y][x] = this.at(x, y);
+                this.grid[x][y] = this.at(x, y);
             }
         }
     }
@@ -79,6 +79,7 @@ export default class BioSnake {
     private m_direction: [number, number] = [0, 0];
     private m_prev_direction: [number, number] = [0, 0];
     tick_callback: (n: number) => void;
+    lost = false;
 
     constructor(size: number = 20, tick_delay: number | ((n: number) => number) = 200, tick_callback?: (n: number) => void) {
         this.m_grid = new Grid(size);
@@ -88,15 +89,13 @@ export default class BioSnake {
             this.m_tick_delay = () => tick_delay;
         } else { this.m_tick_delay = tick_delay; }
 
-        this.m_grid.update(this.snake);
+        this.m_grid.update(this.m_snake);
     }
 
     start(): void {
         if (!this.isStopped) { return; }
+        this.reset();
         this.m_state = "running";
-        this.m_snake = [[12, 13]];
-        this.m_grid.reset();
-        this.m_grid.update(this.snake);
         this.loop();
     }
 
@@ -119,18 +118,22 @@ export default class BioSnake {
         this.m_step = 0;
     }
 
+    reset(): void {
+        this.m_state = "stopped"
+        this.m_snake = [[12, 13]];
+        this.m_grid.reset();
+        this.m_grid.update(this.m_snake);
+    }
+
     tick(): void {
         const [x, y] = this.m_snake[0]; // head of snake
         const [dx, dy] = this.m_direction;
         const newHead = [dx + x, y + dy] as [number, number];
 
-        function isOutOfBounds(n: number, s: number) {
-            return n < 0 || n > this.m_grid.size - 1;
-        }
-
-        if ((newHead[0] < 0 || newHead[1] > this.m_grid.size - 1) || (newHead[0] < 0 || newHead[1] > this.m_grid.size - 1)) {
+        if ((newHead[0] < 0 || newHead[0] > this.m_grid.size - 1) || (newHead[1] < 0 || newHead[1] > this.m_grid.size - 1)) {
             // out of bounds
-            this.m_state = "lost";
+            this.m_state = "stopped";
+            this.lost = true;
             return;
         }
 
@@ -145,23 +148,24 @@ export default class BioSnake {
             this.m_snake.length - (ateFood ? 0 : 1)
         );
 
-        if (this.snake.length > 3) {
+        if (this.m_snake.length > 3) {
             if (snakeBody.some((x) => x[0] === newHead[0] && x[1] === newHead[1])) {
-                this.m_state = "lost";
+                this.m_state = "stopped";
+                this.lost = true;
                 return;
             }
         }
 
         this.m_snake = [newHead, ...snakeBody];
         if (this.tick_callback) { this.tick_callback(this.m_step); }
-        this.grid.update(this.snake);
+        this.m_grid.update(this.m_snake);
         this.m_step++;
     }
 
     private loop() {
         this.m_tick_timeout = setTimeout(() => {
             this.tick();
-            console.log(this.grid.grid);
+            console.log(this.m_grid.grid);
             if (!this.isStopped && !this.isPaused) {
                 this.loop();
             }
@@ -173,12 +177,11 @@ export default class BioSnake {
     get grid(): Grid { return this.m_grid; }
     get step(): number { return this.m_step; }
 
-    get score(): number { return this.snake.length }
+    get score(): number { return this.m_snake.length }
 
-    get isStopped(): boolean { return this.m_state == "stopped" || this.m_state == "lost"; }
+    get isStopped(): boolean { return this.m_state == "stopped"; }
     get isRunning(): boolean { return this.m_state == "running"; }
     get isPaused(): boolean { return this.m_state == "paused"; }
-    get isLost(): boolean { return this.m_state == "lost" }
 
     set direction(dir: [number, number]) { this.m_prev_direction = this.m_direction; this.m_direction = dir; }
     get direction(): [number, number] { return this.m_direction; }

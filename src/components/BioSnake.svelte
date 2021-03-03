@@ -1,69 +1,10 @@
 <script lang="ts">
   import BioSnake from "./BioSnake";
 
-  let game: BioSnake = new BioSnake(20, 200, () => (lost = game.isLost)); // do something in the callback to update display
-  let lost = game.isLost;
-
-  // function getRandomInt(max: number) {
-  //   return Math.floor(Math.random() * Math.floor(max));
-  // }
-  // function randomFood() {
-  //   grid[getRandomInt(bs.GRID_SIZE)][getRandomInt(bs.GRID_SIZE)] = "food";
-  //   grid[getRandomInt(bs.GRID_SIZE)][getRandomInt(bs.GRID_SIZE)] = "food";
-  // }
-  // randomFood();
-
-  // function tick(n: number) {
-  //   setTimeout(() => {
-  //     if (!started) {
-  //       return;
-  //     }
-
-  //     const [x, y] = snakePosition[bs.SNAKE_HEAD];
-  //     const [dx, dy] = direction;
-  //     const newHead = [dx + x, y + dy] as [number, number];
-  //     function isOutOfBounds(n: number) {
-  //       return n < 0 || n > bs.GRID_SIZE - 1;
-  //     }
-  //     if (isOutOfBounds(newHead[0]) || isOutOfBounds(newHead[1])) {
-  //       lost = true;
-  //       return;
-  //     }
-  //     let ateFood = false;
-  //     if (gridWithSnake[newHead[0]][newHead[1]] === "food") {
-  //       ateFood = true;
-  //       randomFood();
-  //     }
-  //     const snakeBody = snakePosition.slice(
-  //       0,
-  //       snakePosition.length - (ateFood ? 0 : 1)
-  //     );
-  //     if (snakeBody.some((x) => x[0] === newHead[0] && x[1] === newHead[1])) {
-  //       lost = true;
-  //       return;
-  //     }
-  //     snakePosition = [newHead, ...snakeBody];
-  //     prevDirection = [...direction];
-  //     updateDisplay();
-  //     tick(bs.TICK_DELAY - Math.min(snakePosition.length, 15) * 10);
-  //   }, n);
-  // }
-
-  // function restart() {
-  //   snakePosition = [[12, 13]];
-  //   direction = [0, 1];
-  //   grid = [...Array(bs.GRID_SIZE)].map(() =>
-  //     Array(bs.GRID_SIZE).fill("empty")
-  //   );
-  //   gridWithSnake = grid;
-  //   randomFood();
-  //   updateDisplay();
-  //   lost = false;
-  //   started = false;
-  // }
+  let game: BioSnake = new BioSnake(20, 200, () => (game = game)); // hack to get this damn thing updating properly lol
 
   async function handleInput(e: { key: any }): Promise<void> {
-    if (!game.isRunning) {
+    if (!game.isRunning && !game.lost) {
       game.start();
     }
 
@@ -82,7 +23,7 @@
         newDir = [1, 0];
         break;
       case "Enter":
-        game.stop();
+        game.reset();
         return;
     }
 
@@ -102,7 +43,7 @@
 <svelte:window on:keydown={handleInput} />
 
 <main>
-  {#if lost}
+  {#if game.lost}
     <h1 class="text-center">you lost</h1>
     <h3 class="text-center">
       Hit <code
@@ -125,7 +66,7 @@
     </div>
   </div>
 
-  {#if lost}
+  {#if game.lost}
     <div class="center m-auto mt-3">
       <button on:click={game.stop}> Start again </button>
     </div>
