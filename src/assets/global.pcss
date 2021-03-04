@@ -1,4 +1,18 @@
 @tailwind base;
 
+.video-responsive {
+  @apply overflow-hidden;
+  @apply relative;
+  @apply h-0;
+  padding-bottom: 56.25%;
+}
+.video-responsive iframe {
+  @apply top-0;
+  @apply left-0;
+  @apply h-full;
+  @apply w-full;
+  @apply absolute;
+}
+
 @tailwind components;
 @tailwind utilities;
