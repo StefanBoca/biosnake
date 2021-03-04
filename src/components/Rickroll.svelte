@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Youtube from "svelte-youtube";
+  import Youtube from "../components/Youtube.svelte";
   import { nav_enabled } from "../components/Nav";
 
   export let evil_mode: boolean = true;
@@ -12,10 +12,10 @@
   let rickroll = !button;
   let nav_before: boolean = $nav_enabled;
   let player;
-  if (evil_mode) nav_enabled.set(false);
 
   async function activate() {
     rickroll = true;
+    if (evil_mode) nav_enabled.set(false);
     player.seekTo(0);
     player.unMute();
   }
