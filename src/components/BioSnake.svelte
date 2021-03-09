@@ -259,22 +259,20 @@
   </h3>
 {/if}
 <h3 class="text-center">score {snake.length}</h3>
-<div class="justify-center">
-  <div>
-    {#each grid as row, x}
-      <div class="flex">
-        {#each row as cell, y}
-          <!-- TODO: turn clicked cells into food? -->
-          <div
-            class={`w-10 h-10 rounded border border-solid border-white ${
-              cell.value
-            } ${cell.connections.map((e) => dir2connect.get(e)).join(" ")}`}
-            on:click={() => (grid[x][y].food = "food")}
-          />
-        {/each}
-      </div>
+<div
+  class="board m-auto"
+  style="grid-template-columns: repeat({GRID_SIZE}, 1fr);"
+>
+  {#each grid as row, x}
+    {#each row as cell, y}
+      <div
+        class="cell rounded-md sm:rounded-lg md:rounded-xl {cell.value} {cell.connections
+          .map((e) => dir2connect.get(e))
+          .join(' ')}"
+        on:click={() => (grid[x][y].food = "food")}
+      />
     {/each}
-  </div>
+  {/each}
 </div>
 
 {#if lost}
@@ -284,14 +282,21 @@
 {/if}
 
 <style>
-  .game-board {
-    grid-template-columns: repeat(GRID_SIZE, calc(100vw / GRID_SIZE));
-    grid-template-rows: repeat(GRID_SIZE, calc(100vh / GRID_SIZE));
-    gap: 0;
+  .board {
+    width: calc(100vmin - 10rem);
+    height: calc(100vmin - 10rem);
+    @apply grid;
+    @apply gap-0;
+    aspect-ratio: 1 / 1;
   }
-
-  .empty {
+  .cell {
+    @apply w-full;
+    @apply h-full;
+    @apply border;
+    @apply border-solid;
+    @apply border-white;
     @apply bg-gray-800;
+    margin: 0;
   }
   .food {
     @apply bg-pink-500;
@@ -303,23 +308,28 @@
     @apply bg-green-500;
   }
   .connect-top {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
     border-top-color: transparent;
   }
   .connect-bottom {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 2px;
+    border-bottom-right-radius: 2px;
     border-bottom-color: transparent;
   }
   .connect-left {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+    border-top-left-radius: 2px;
+    border-bottom-left-radius: 2px;
     border-left-color: transparent;
   }
   .connect-right {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
+    border-top-right-radius: 2px;
+    border-bottom-right-radius: 2px;
     border-right-color: transparent;
+  }
+
+  :global(html, body) {
+    @apply h-full;
+    @apply overflow-hidden;
   }
 </style>
