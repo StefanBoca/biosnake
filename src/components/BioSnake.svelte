@@ -135,8 +135,8 @@
       let a = snake[i];
       let b = snake[i + 1];
       let dir: Dir = vec2dir([a[0] - b[0], a[1] - b[1]]);
-      grid[a[1]][a[0]].connections.push(dir);
-      grid[b[1]][b[0]].connections.push(oppositeDir.get(dir));
+      grid[a[1]][a[0]].connections.push(oppositeDir.get(dir));
+      grid[b[1]][b[0]].connections.push(dir);
     }
     grid[snake[0][1]][snake[0][0]].snake = "head";
   }
