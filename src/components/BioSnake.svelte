@@ -208,15 +208,11 @@
     e.stopPropagation();
     let new_dir: Dir = "none";
     if (keyMap.has(e.key)) {
-      new_dir = keyMap.get(e.key);
+      handleStart(keyMap.get(e.key));
     } else {
       switch (e.key) {
         case "Escape":
-          if (state.status === "running") {
-            stop();
-          } else {
-            start();
-          }
+          stop();
           return;
         case "t":
           tick();
@@ -227,7 +223,9 @@
           return;
       }
     }
+  }
 
+  function handleStart(new_dir: Dir) {
     if (new_dir !== "none") {
       if (new_dir !== oppositeDir.get(state.prev_dir) || snake.length <= 1) {
         state.dir = new_dir;
@@ -237,6 +235,40 @@
         start();
       }
     }
+  }
+
+  var xDown = null;
+  var yDown = null;
+
+  function handleTouchStart(evt: TouchEvent) {
+    const firstTouch = evt.touches[0];
+    xDown = firstTouch.clientX;
+    yDown = firstTouch.clientY;
+  }
+
+  function handleTouchMove(evt: TouchEvent) {
+    if (!xDown || !yDown) {
+      return;
+    }
+    var xUp = evt.touches[0].clientX;
+    var yUp = evt.touches[0].clientY;
+    var xDiff = xDown - xUp;
+    var yDiff = yDown - yUp;
+    if (Math.abs(xDiff) > Math.abs(yDiff)) {
+      if (xDiff > 0) {
+        handleStart("left");
+      } else {
+        handleStart("right");
+      }
+    } else {
+      if (yDiff > 0) {
+        handleStart("up");
+      } else {
+        handleStart("down");
+      }
+    }
+    xDown = null;
+    yDown = null;
   }
 
   $: lost = state.status === "lost";
@@ -262,6 +294,8 @@
 <div
   class="board m-auto"
   style="grid-template-columns: repeat({GRID_SIZE}, 1fr);"
+  on:touchstart={handleTouchStart}
+  on:touchmove={handleTouchMove}
 >
   {#each grid as row, x}
     {#each row as cell, y}
