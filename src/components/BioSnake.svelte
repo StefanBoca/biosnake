@@ -16,6 +16,7 @@
     status: "stopped" | "running" | "lost";
     dir: Dir;
     prev_dir: Dir;
+    prev_tail: Cell;
   }
   class Cell {
     food: FoodCell = "empty";
@@ -35,7 +36,12 @@
     }
   }
 
-  let state: State = { status: "stopped", dir: "none", prev_dir: "none" };
+  let state: State = {
+    status: "stopped",
+    dir: "none",
+    prev_dir: "none",
+    prev_tail: undefined,
+  };
   let grid: Array<Array<Cell>>;
   let snake: Array<[number, number]>;
   let step: number;
@@ -116,13 +122,22 @@
   $: {
     for (let y = 0; y < GRID_SIZE; y++) {
       for (let x = 0; x < GRID_SIZE; x++) {
-        if (grid[y][x].snake !== "empty") {
-          grid[y][x].snake = "empty";
+        let cell = grid[y][x];
+        if (cell.snake !== "empty") {
+          cell.snake = "empty";
         }
+        cell.connections = [];
       }
     }
 
     snake.forEach(([x, y]) => (grid[y][x].snake = "body"));
+    for (let i = 0; i < snake.length - 1; i++) {
+      let a = snake[i];
+      let b = snake[i + 1];
+      let dir: Dir = vec2dir([a[0] - b[0], a[1] - b[1]]);
+      grid[a[1]][a[0]].connections.push(dir);
+      grid[b[1]][b[0]].connections.push(oppositeDir.get(dir));
+    }
     grid[snake[0][1]][snake[0][0]].snake = "head";
   }
 
@@ -161,40 +176,6 @@
       ateFood = true;
     }
 
-    // the following voodoo code updates the cell conections instead of doing this every render
-    if (snake.length > 1 || ateFood) {
-      let newHeadCell = grid[newHead[1]][newHead[0]];
-      let oldHeadCell = grid[snake[0][1]][snake[0][0]];
-      let connectHead: Dir = oppositeDir.get(state.dir);
-      let connectBody: Dir = state.dir;
-      if (!newHeadCell.connections.includes(connectHead)) {
-        newHeadCell.connections.push(connectHead);
-      }
-      if (!oldHeadCell.connections.includes(connectBody)) {
-        oldHeadCell.connections.push(connectBody);
-      }
-    }
-    if (snake.length > 1 && !ateFood) {
-      function getCellsFromEnd(i: number = 1): Cell {
-        return grid[snake[snake.length - i][1]][snake[snake.length - i][0]];
-      }
-      function getSnakeIndices(i: number = 1): [number, number] {
-        return [snake[snake.length - i][1], snake[snake.length - i][0]];
-      }
-      let oldLastCell = getCellsFromEnd(1);
-      let newLastCell = getCellsFromEnd(2);
-      let lastDir: Dir = state.dir;
-      if (snake.length > 2) {
-        lastDir = vec2dir([
-          getSnakeIndices(3)[1] - getSnakeIndices(2)[1],
-          getSnakeIndices(3)[0] - getSnakeIndices(2)[0],
-        ]);
-      }
-      newLastCell.connections = [lastDir];
-      oldLastCell.connections = [];
-    }
-    // end voodoo code
-
     const snakeBody = snake.slice(0, snake.length - (ateFood ? 0 : 1));
 
     if (
@@ -230,6 +211,13 @@
       new_dir = keyMap.get(e.key);
     } else {
       switch (e.key) {
+        case "Escape":
+          if (state.status === "running") {
+            stop();
+          } else {
+            start();
+          }
+          return;
         case "t":
           tick();
           return;
@@ -271,14 +259,14 @@
   </h3>
 {/if}
 <h3 class="text-center">score {snake.length}</h3>
-<div class="flex justify-center items-center">
+<div class="justify-center">
   <div>
     {#each grid as row, x}
       <div class="flex">
         {#each row as cell, y}
           <!-- TODO: turn clicked cells into food? -->
           <div
-            class={`w-10 h-10 rounded-md border border-solid border-white ${
+            class={`w-10 h-10 rounded border border-solid border-white ${
               cell.value
             } ${cell.connections.map((e) => dir2connect.get(e)).join(" ")}`}
             on:click={() => (grid[x][y].food = "food")}
@@ -296,6 +284,12 @@
 {/if}
 
 <style>
+  .game-board {
+    grid-template-columns: repeat(GRID_SIZE, calc(100vw / GRID_SIZE));
+    grid-template-rows: repeat(GRID_SIZE, calc(100vh / GRID_SIZE));
+    gap: 0;
+  }
+
   .empty {
     @apply bg-gray-800;
   }
