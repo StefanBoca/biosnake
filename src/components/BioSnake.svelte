@@ -241,12 +241,13 @@
   var yDown = null;
 
   function handleTouchStart(evt: TouchEvent) {
-    const firstTouch = evt.touches[0];
-    xDown = firstTouch.clientX;
-    yDown = firstTouch.clientY;
+    // evt.preventDefault();
+    xDown = evt.touches[0].clientX;
+    yDown = evt.touches[0].clientY;
   }
 
   function handleTouchMove(evt: TouchEvent) {
+    // evt.preventDefault();
     if (!xDown || !yDown) {
       return;
     }
@@ -254,21 +255,28 @@
     var yUp = evt.touches[0].clientY;
     var xDiff = xDown - xUp;
     var yDiff = yDown - yUp;
+    let event = false;
     if (Math.abs(xDiff) > Math.abs(yDiff)) {
       if (xDiff > 0) {
         handleStart("left");
-      } else {
+        event = true;
+      } else if (xDiff < -0) {
         handleStart("right");
+        event = true;
       }
     } else {
       if (yDiff > 0) {
         handleStart("up");
-      } else {
+        event = true;
+      } else if (yDiff < -0) {
         handleStart("down");
+        event = true;
       }
     }
-    xDown = null;
-    yDown = null;
+    if (event) {
+      xDown = null;
+      yDown = null;
+    }
   }
 
   $: lost = state.status === "lost";
@@ -279,14 +287,21 @@
   });
 </script>
 
-<svelte:window on:keydown={handleInput} />
+<svelte:window
+  on:keydown={handleInput}
+  on:touchstart={handleTouchStart}
+  on:touchmove={handleTouchMove}
+/>
 
 {#if lost}
   <h1 class="text-center">you lost</h1>
   <h3 class="text-center">
     Hit <code
       class="border border-solid border-black bg-gray-200 rounded-sm p-1"
-      >ENTER</code
+      on:click={() => {
+        reset();
+        spawnFood();
+      }}>ENTER</code
     > to restart
   </h3>
 {/if}
@@ -294,13 +309,11 @@
 <div
   class="board m-auto"
   style="grid-template-columns: repeat({GRID_SIZE}, 1fr);"
-  on:touchstart={handleTouchStart}
-  on:touchmove={handleTouchMove}
 >
   {#each grid as row, x}
     {#each row as cell, y}
       <div
-        class="cell rounded-md sm:rounded-lg md:rounded-xl {cell.value} {cell.connections
+        class="cell rounded-md sm:rounded-lg lg:rounded-xl {cell.value} {cell.connections
           .map((e) => dir2connect.get(e))
           .join(' ')}"
         on:click={() => (grid[x][y].food = "food")}
