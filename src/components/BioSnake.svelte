@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
+
   const GRID_SIZE = 20;
-  const DEBUG_STEP = true;
+  const DEBUG_STEP = process.env.NODE_ENV === "development" && false;
 
   function tick_delay(): number {
     return 200;
@@ -19,7 +20,7 @@
   class Cell {
     food: FoodCell = "empty";
     snake: SnakeCell = "empty";
-    connections: Array<string> = [];
+    connections: Array<Dir> = [];
 
     constructor() {}
 
@@ -47,6 +48,22 @@
     ["right", [1, 0]],
     ["none", [0, 0]],
   ]);
+  function vec2dir(v: [number, number]): Dir {
+    for (const [dir, vec] of dir2vec.entries()) {
+      if (vec[0] === v[0] && vec[1] === v[1]) {
+        return dir;
+      }
+    }
+    return "none";
+  }
+
+  const dir2connect: Map<Dir, string> = new Map([
+    ["up", "connect-top"],
+    ["down", "connect-bottom"],
+    ["left", "connect-left"],
+    ["right", "connect-right"],
+    ["none", ""],
+  ]);
 
   const oppositeDir: Map<Dir, Dir> = new Map([
     ["up", "down"],
@@ -65,6 +82,10 @@
     ["s", "down"],
     ["a", "left"],
     ["f", "right"],
+    ["h", "left"],
+    ["j", "down"],
+    ["k", "up"],
+    ["l", "right"],
   ]);
 
   function isOutOfBounds(x: number, y: number): boolean {
@@ -138,25 +159,40 @@
     if (grid[newHead[1]][newHead[0]].food === "food") {
       grid[newHead[1]][newHead[0]].food = "empty";
       ateFood = true;
-      spawnFood();
     }
 
-    function vec2connect(v: [number, number]): string {
-      return v[0] === 1
-        ? "connect-right"
-        : v[0] === -1
-        ? "connect-left"
-        : v[1] === 1
-        ? "connect-bottom"
-        : v[1] === -1
-        ? "connect-top"
-        : "";
-    }
     // the following voodoo code updates the cell conections instead of doing this every render
-    let connectHead: string = vec2connect([-dx, -dy]);
-    let connectBody: string = vec2connect([dx, dy]);
-    grid[newHead[1]][newHead[0]].connections.push(connectHead);
-    grid[snake[0][1]][snake[0][0]].connections.push(connectBody);
+    if (snake.length > 1 || ateFood) {
+      let newHeadCell = grid[newHead[1]][newHead[0]];
+      let oldHeadCell = grid[snake[0][1]][snake[0][0]];
+      let connectHead: Dir = oppositeDir.get(state.dir);
+      let connectBody: Dir = state.dir;
+      if (!newHeadCell.connections.includes(connectHead)) {
+        newHeadCell.connections.push(connectHead);
+      }
+      if (!oldHeadCell.connections.includes(connectBody)) {
+        oldHeadCell.connections.push(connectBody);
+      }
+    }
+    if (snake.length > 1 && !ateFood) {
+      function getCellsFromEnd(i: number = 1): Cell {
+        return grid[snake[snake.length - i][1]][snake[snake.length - i][0]];
+      }
+      function getSnakeIndices(i: number = 1): [number, number] {
+        return [snake[snake.length - i][1], snake[snake.length - i][0]];
+      }
+      let oldLastCell = getCellsFromEnd(1);
+      let newLastCell = getCellsFromEnd(2);
+      let lastDir: Dir = state.dir;
+      if (snake.length > 2) {
+        lastDir = vec2dir([
+          getSnakeIndices(3)[1] - getSnakeIndices(2)[1],
+          getSnakeIndices(3)[0] - getSnakeIndices(2)[0],
+        ]);
+      }
+      newLastCell.connections = [lastDir];
+      oldLastCell.connections = [];
+    }
     // end voodoo code
 
     const snakeBody = snake.slice(0, snake.length - (ateFood ? 0 : 1));
@@ -171,6 +207,9 @@
     }
 
     snake = [newHead, ...snakeBody];
+    if (ateFood) {
+      spawnFood();
+    }
     state.prev_dir = state.dir;
     step++;
   }
@@ -185,6 +224,7 @@
   }
 
   async function handleInput(e: KeyboardEvent): Promise<void> {
+    e.stopPropagation();
     let new_dir: Dir = "none";
     if (keyMap.has(e.key)) {
       new_dir = keyMap.get(e.key);
@@ -195,6 +235,7 @@
           return;
         case "Enter":
           reset();
+          spawnFood();
           return;
       }
     }
@@ -239,7 +280,7 @@
           <div
             class={`w-10 h-10 rounded-md border border-solid border-white ${
               cell.value
-            } ${cell.connections.join(" ")}`}
+            } ${cell.connections.map((e) => dir2connect.get(e)).join(" ")}`}
             on:click={() => (grid[x][y].food = "food")}
           />
         {/each}
