@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   const GRID_SIZE = 20;
+  const DEBUG_STEP = true;
 
   function tick_delay(): number {
     return 200;
@@ -32,6 +34,12 @@
     }
   }
 
+  let state: State = { status: "stopped", dir: "none", prev_dir: "none" };
+  let grid: Array<Array<Cell>>;
+  let snake: Array<[number, number]>;
+  let step: number;
+  let tick_timeout: number;
+
   const dir2vec: Map<Dir, [number, number]> = new Map([
     ["up", [0, -1]],
     ["down", [0, 1]],
@@ -59,12 +67,6 @@
     ["f", "right"],
   ]);
 
-  let state: State = { status: "stopped", dir: "none", prev_dir: "none" };
-  let grid: Array<Array<Cell>>;
-  let snake: Array<[number, number]>;
-  let step: number;
-  let tick_timeout: number;
-
   function isOutOfBounds(x: number, y: number): boolean {
     return x < 0 || x > GRID_SIZE - 1 || y < 0 || y > GRID_SIZE - 1;
   }
@@ -73,7 +75,9 @@
     if (state.status === "running") return;
     if (state.dir === "none") return;
     state.status = "running";
-    loop();
+    if (!DEBUG_STEP) {
+      loop();
+    }
   }
   function stop(): void {
     if (state.status !== "running") return;
@@ -86,7 +90,6 @@
       [...Array(GRID_SIZE)].map(() => new Cell())
     );
     snake = [[12, 13]];
-    spawnFood();
   }
 
   $: {
@@ -100,49 +103,6 @@
 
     snake.forEach(([x, y]) => (grid[y][x].snake = "body"));
     grid[snake[0][1]][snake[0][0]].snake = "head";
-
-    function addDir2Pos(x: number, y: number, d: Dir): [number, number] {
-      let [dx, dy] = dir2vec.get(d);
-      return [dx + x, dy + y];
-    }
-
-    for (let y = 0; y < GRID_SIZE; y++) {
-      for (let x = 0; x < GRID_SIZE; x++) {
-        grid[y][x].connections = [];
-        if (grid[y][x].snake !== "empty") {
-          // warning, bad code incoming
-          // fun fact: the above comment was written before the following code
-          let [topx, topy] = addDir2Pos(x, y, "up");
-          let [bottomx, bottomy] = addDir2Pos(x, y, "down");
-          let [leftx, lefty] = addDir2Pos(x, y, "left");
-          let [rightx, righty] = addDir2Pos(x, y, "right");
-          if (
-            !isOutOfBounds(topx, topy) &&
-            grid[topy][topx].snake !== "empty"
-          ) {
-            grid[y][x].connections.push("connect-top");
-          }
-          if (
-            !isOutOfBounds(bottomx, bottomy) &&
-            grid[bottomy][bottomx].snake !== "empty"
-          ) {
-            grid[y][x].connections.push("connect-bottom");
-          }
-          if (
-            !isOutOfBounds(leftx, lefty) &&
-            grid[lefty][leftx].snake !== "empty"
-          ) {
-            grid[y][x].connections.push("connect-left");
-          }
-          if (
-            !isOutOfBounds(rightx, righty) &&
-            grid[righty][rightx].snake !== "empty"
-          ) {
-            grid[y][x].connections.push("connect-right");
-          }
-        }
-      }
-    }
   }
 
   function spawnFood(): void {
@@ -164,8 +124,6 @@
     }
   }
 
-  reset();
-
   function tick(): void {
     const [x, y] = snake[0]; // head of snake
     const [dx, dy] = dir2vec.get(state.dir);
@@ -182,6 +140,24 @@
       ateFood = true;
       spawnFood();
     }
+
+    function vec2connect(v: [number, number]): string {
+      return v[0] === 1
+        ? "connect-right"
+        : v[0] === -1
+        ? "connect-left"
+        : v[1] === 1
+        ? "connect-bottom"
+        : v[1] === -1
+        ? "connect-top"
+        : "";
+    }
+    // the following voodoo code updates the cell conections instead of doing this every render
+    let connectHead: string = vec2connect([-dx, -dy]);
+    let connectBody: string = vec2connect([dx, dy]);
+    grid[newHead[1]][newHead[0]].connections.push(connectHead);
+    grid[snake[0][1]][snake[0][0]].connections.push(connectBody);
+    // end voodoo code
 
     const snakeBody = snake.slice(0, snake.length - (ateFood ? 0 : 1));
 
@@ -214,6 +190,9 @@
       new_dir = keyMap.get(e.key);
     } else {
       switch (e.key) {
+        case "t":
+          tick();
+          return;
         case "Enter":
           reset();
           return;
@@ -232,6 +211,11 @@
   }
 
   $: lost = state.status === "lost";
+
+  reset();
+  onMount(async () => {
+    spawnFood();
+  });
 </script>
 
 <svelte:window on:keydown={handleInput} />
