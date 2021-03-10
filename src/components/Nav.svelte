@@ -1,60 +1,56 @@
-<script lang="ts">
-  export let segment: string;
+<script context="module" lang="ts">
+  export interface Page {
+    segment: string;
+    name: string;
+    href: string;
+  }
 </script>
 
-<nav>
-  <ul>
-    <li>
-      <a class={segment === undefined ? "selected" : ""} href=".">home</a>
-    </li>
-    <li>
-      <a class={segment === "about" ? "selected" : ""} href="about">about</a>
-    </li>
+<script lang="ts">
+  export let segment: string;
+
+  export let pages: Array<Page> = [
+    { segment: undefined, name: "home", href: "." },
+    { segment: "about", name: "about", href: "about" },
+  ];
+</script>
+
+<nav class="font-light px-4 py-0">
+  <ul class="m-0 p-0">
+    {#each pages as page}
+      <li
+        class="block float-left hover:scale-110 transition ease-in-out transform duration-300"
+      >
+        <a
+          class:selected={segment === page.segment}
+          class="no-underline p-2 block"
+          href={page.href}>{page.name}</a
+        >
+      </li>
+    {/each}
   </ul>
 </nav>
 
-<style>
-  nav {
-    border-bottom: 1px solid rgba(255, 62, 0, 0.1);
-    font-weight: 300;
-    padding: 0 1em;
-  }
-
-  ul {
-    margin: 0;
-    padding: 0;
-  }
-
-  /* clearfix */
+<style lang="postcss">
   ul::after {
+    /* clearfix */
     content: "";
     display: block;
     clear: both;
   }
 
-  li {
-    display: block;
-    float: left;
-  }
-
   .selected {
-    position: relative;
-    display: inline-block;
+    @apply relative;
+    @apply inline-block;
   }
 
   .selected::after {
-    position: absolute;
     content: "";
+    @apply absolute;
     width: calc(100% - 1em);
     height: 2px;
-    background-color: rgb(255, 62, 0);
-    display: block;
+    @apply bg-blue-600;
+    @apply block;
     bottom: -1px;
-  }
-
-  a {
-    text-decoration: none;
-    padding: 1em 0.5em;
-    display: block;
   }
 </style>

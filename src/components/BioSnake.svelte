@@ -8,7 +8,8 @@
     return 200;
   }
 
-  type FoodCell = "empty" | "food";
+  const Food = ["A", "C", "G", "T", "U"] as const;
+  type FoodCell = "empty" | typeof Food[number];
   type SnakeCell = "empty" | "head" | "body";
 
   type Dir = "up" | "down" | "left" | "right" | "none";
@@ -154,9 +155,8 @@
       if (unoccupied.length === 0) {
         return;
       }
-      const rand_cell =
-        unoccupied[Math.floor(Math.random() * unoccupied.length)];
-      grid[rand_cell[1]][rand_cell[0]].food = "food";
+      const r = unoccupied[Math.floor(Math.random() * unoccupied.length)];
+      grid[r[1]][r[0]].food = Food[Math.floor(Math.random() * Food.length)];
     }
   }
 
@@ -171,7 +171,7 @@
     }
 
     let ateFood = false;
-    if (grid[newHead[1]][newHead[0]].food === "food") {
+    if (grid[newHead[1]][newHead[0]].food !== "empty") {
       grid[newHead[1]][newHead[0]].food = "empty";
       ateFood = true;
     }
@@ -206,7 +206,6 @@
 
   async function handleInput(e: KeyboardEvent): Promise<void> {
     e.stopPropagation();
-    let new_dir: Dir = "none";
     if (keyMap.has(e.key)) {
       handleStart(keyMap.get(e.key));
     } else {
@@ -241,13 +240,13 @@
   var yDown = null;
 
   function handleTouchStart(evt: TouchEvent) {
-    // evt.preventDefault();
+    evt.preventDefault();
     xDown = evt.touches[0].clientX;
     yDown = evt.touches[0].clientY;
   }
 
   function handleTouchMove(evt: TouchEvent) {
-    // evt.preventDefault();
+    evt.preventDefault();
     if (!xDown || !yDown) {
       return;
     }
@@ -293,45 +292,51 @@
   on:touchmove={handleTouchMove}
 />
 
-{#if lost}
-  <h1 class="text-center">you lost</h1>
-  <h3 class="text-center">
-    Hit <code
-      class="border border-solid border-black bg-gray-200 rounded-sm p-1"
-      on:click={() => {
-        reset();
-        spawnFood();
-      }}>ENTER</code
-    > to restart
-  </h3>
-{/if}
-<h3 class="text-center">score {snake.length}</h3>
+<h3 class="text-center font-sans font-medium">Score: {snake.length}</h3>
 <div
   class="board m-auto"
-  style="grid-template-columns: repeat({GRID_SIZE}, 1fr);"
+  style="grid-template-columns: repeat({GRID_SIZE}, minmax(0, 1fr)); grid-template-rows: repeat({GRID_SIZE}, minmax(0, 1fr));"
 >
   {#each grid as row, x}
     {#each row as cell, y}
       <div
-        class="cell rounded-md sm:rounded-lg lg:rounded-xl {cell.value} {cell.connections
+        class="cell rounded-md sm:rounded-lg md:rounded-xl {cell.value} {cell.connections
           .map((e) => dir2connect.get(e))
           .join(' ')}"
-        on:click={() => (grid[x][y].food = "food")}
-      />
+        on:click={() =>
+          (grid[x][y].food = Food[Math.floor(Math.random() * Food.length)])}
+      >
+        {#if cell.snake === "empty" && cell.food !== "empty"}
+          {cell.food}
+        {/if}
+      </div>
     {/each}
   {/each}
 </div>
 
-{#if lost}
-  <div class="center m-auto mt-3">
-    <button on:click={stop}> Start again </button>
+{#if lost || process.env.NODE_ENV}
+  <div class="center m-auto mt-3 text-center">
+    <h1 class="text-center">You Lost!</h1>
+    <h3 class="text-center">
+      Hit <code class="bg-blue-600 hover:bg-red-600 rounded-md p-1">ENTER</code>
+      to restart or press the button below
+    </h3>
+    <button
+      class="bg-blue-600 hover:bg-red-600 rounded-md p-2 transition duration-500 kease-in-out transform hover:-translate-y-1 hover:scale-110 m-2"
+      on:click={() => {
+        reset();
+        spawnFood();
+      }}
+    >
+      Start again
+    </button>
   </div>
 {/if}
 
 <style>
   .board {
-    width: calc(100vmin - 10rem);
-    height: calc(100vmin - 10rem);
+    width: calc(90vmin - 10rem);
+    height: calc(90vmin - 10rem);
     @apply grid;
     @apply gap-0;
     aspect-ratio: 1 / 1;
@@ -339,42 +344,69 @@
   .cell {
     @apply w-full;
     @apply h-full;
-    @apply border;
+    @apply border-2;
     @apply border-solid;
-    @apply border-white;
+    @apply border-transparent;
     @apply bg-gray-800;
-    margin: 0;
+    @apply m-0;
+    @apply text-center;
+    @apply font-mono;
+    @apply font-bold;
+    font-size: 2vmin;
   }
-  .food {
+  .A {
     @apply bg-pink-500;
+    @apply border-pink-600;
+    @apply text-pink-900;
+  }
+  .C {
+    @apply bg-yellow-500;
+    @apply border-yellow-600;
+    @apply text-yellow-900;
+  }
+  .G {
+    @apply bg-red-500;
+    @apply border-red-600;
+    @apply text-red-900;
+  }
+  .T {
+    @apply bg-blue-500;
+    @apply border-blue-600;
+    @apply text-blue-900;
+  }
+  .U {
+    @apply bg-indigo-500;
+    @apply border-indigo-600;
+    @apply text-indigo-900;
   }
   .body {
-    @apply bg-green-800;
+    @apply bg-green-700;
+    @apply border-green-600;
   }
   .head {
     @apply bg-green-500;
+    @apply border-green-600;
   }
   .connect-top {
-    border-top-left-radius: 2px;
-    border-top-right-radius: 2px;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
     border-top-color: transparent;
   }
   .connect-bottom {
-    border-bottom-left-radius: 2px;
-    border-bottom-right-radius: 2px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
     border-bottom-color: transparent;
   }
   .connect-left {
-    border-top-left-radius: 2px;
-    border-bottom-left-radius: 2px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
     border-left-color: transparent;
   }
   .connect-right {
-    border-top-right-radius: 2px;
-    border-bottom-right-radius: 2px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
     border-right-color: transparent;
   }
-
   :global(html, body) {
     @apply h-full;
     @apply overflow-hidden;

@@ -1,6 +1,6 @@
 {
     "name": "biosnake",
-    "description": "TODO",
+    "description": "biotech themed snake game",
     "version": "0.0.1",
     "scripts": {
         "dev": "NODE_ENV=development run-p watch:*",
