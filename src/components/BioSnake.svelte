@@ -292,7 +292,9 @@
   on:touchmove={handleTouchMove}
 />
 
-<h3 class="text-center font-sans font-medium">Score: {snake.length}</h3>
+<h3 class="text-center font-mono font-bold text-lg md:text-xl">
+  Score: {snake.length}
+</h3>
 <div
   class="board m-auto"
   style="grid-template-columns: repeat({GRID_SIZE}, minmax(0, 1fr)); grid-template-rows: repeat({GRID_SIZE}, minmax(0, 1fr));"
