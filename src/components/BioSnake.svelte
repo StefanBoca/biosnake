@@ -9,6 +9,7 @@
   const DEBUG_CLICK_FOOD = DEBUG && false;
   const DEBUG_LOSE = DEBUG && false;
   const DEBUG_ANTIWIN = DEBUG && false;
+  const DEBUG_WIN = DEBUG && false;
 
   function tick_delay(): number {
     return snake.length >= (DEBUG_ANTIWIN ? 25 : 390)
@@ -37,7 +38,7 @@
   };
 
   interface State {
-    status: "stopped" | "running" | "lost";
+    status: "stopped" | "running" | "lost" | "won";
     dir: Dir;
     prev_dir: Dir;
     prev_tail: Cell;
@@ -224,19 +225,18 @@
     let newHeadCell = grid[newHead[1]][newHead[0]];
     if (newHeadCell.food !== "empty") {
       ateFood = true;
-      console.log(
-        newHeadCell.food,
-        targets[0].type,
-        FoodOpposites.get(targets[0].type)
-      );
       if (newHeadCell.food === FoodOpposites.get(targets[0].type)) {
         state.score += 4;
+        targets.shift();
+        addTargets();
       } else {
         state.score -= 6;
       }
       newHeadCell.food = "empty";
-      targets.shift();
-      addTargets();
+    }
+
+    if (state.score >= (DEBUG_WIN ? 10 : 100)) {
+      state.status = "won";
     }
 
     const snakeBody = snake.slice(0, snake.length - (ateFood ? 0 : 1));
@@ -345,6 +345,7 @@
   }
 
   $: lost = state.status === "lost";
+  $: won = state.status === "won";
 
   reset();
   onMount(async () => {
@@ -360,10 +361,12 @@
 />
 
 <div class="m-auto flex flex-row justify-center">
-  <div class="m-8 mt-20 flex flex-col flex-nowrap flex-initial text-center">
+  <div
+    class="m-8 mt-8 md:mt-20 flex flex-col flex-nowrap flex-initial text-center"
+  >
     {#each targets as target, i (target.id)}
       <div
-        class="m-1 font-mono font-semibold text-lg border-2 border-solid rounded-md p-3 {target.type}"
+        class="m-1 font-mono font-semibold text-sm md:text-lg border-2 border-solid rounded-sm md:rounded-md md:p-3 {target.type}"
         class:target-first={i == 0}
         animate:flip={{ duration: 300 }}
         in:fly={{ y: 200, duration: 500 }}
@@ -404,8 +407,8 @@
   </div>
 </div>
 
-{#if lost || DEBUG_LOSE}
-  <div class="center m-auto mt-3 text-center font-mono">
+<div class="center m-auto mt-3 text-center font-mono">
+  {#if lost || DEBUG_LOSE}
     <h1 class="text-center">You Lost!</h1>
     <h3 class="text-center">
       Hit <code class="bg-green-600 rounded-md p-1">ENTER</code>
@@ -421,8 +424,11 @@
     >
       Start again
     </button>
-  </div>
-{/if}
+  {/if}
+  {#if won || DEBUG_WIN}
+    <h1 class="text-center">Yaaay! You won!</h1>
+  {/if}
+</div>
 
 <style lang="postcss">
   .board {

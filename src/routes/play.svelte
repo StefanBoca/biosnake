@@ -9,4 +9,4 @@
   >
 </div>
 
-<BioSnake RNA={false} />
+<BioSnake RNA={true} />
