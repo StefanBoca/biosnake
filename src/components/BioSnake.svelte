@@ -317,14 +317,14 @@
 </div>
 
 {#if lost || process.env.NODE_ENV}
-  <div class="center m-auto mt-3 text-center">
+  <div class="center m-auto mt-3 text-center font-mono">
     <h1 class="text-center">You Lost!</h1>
     <h3 class="text-center">
-      Hit <code class="bg-blue-600 hover:bg-red-600 rounded-md p-1">ENTER</code>
+      Hit <code class="bg-green-600 rounded-md p-1">ENTER</code>
       to restart or press the button below
     </h3>
     <button
-      class="bg-blue-600 hover:bg-red-600 rounded-md p-2 transition duration-500 kease-in-out transform hover:-translate-y-1 hover:scale-110 m-2"
+      class="bg-blue-600 hover:bg-red-600 rounded-md p-2 transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-110 m-2"
       on:click={() => {
         reset();
         spawnFood();
