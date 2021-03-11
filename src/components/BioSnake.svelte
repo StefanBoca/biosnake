@@ -1,25 +1,47 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { flip } from "svelte/animate";
+  import { fly } from "svelte/transition";
 
   const GRID_SIZE = 20;
-  const DEBUG = process.env.NODE_ENV === "development" && false;
+  const DEBUG = process.env.NODE_ENV === "development";
+  const DEBUG_STEP = DEBUG && false;
+  const DEBUG_CLICK_FOOD = DEBUG && false;
+  const DEBUG_LOSE = DEBUG && false;
+  const DEBUG_ANTIWIN = DEBUG && false;
 
   function tick_delay(): number {
-    return snake.length >= 398
-      ? 40
+    return snake.length >= (DEBUG_ANTIWIN ? 25 : 390)
+      ? 25
       : Math.max(200 * Math.exp(-0.007 * snake.length), 120);
   }
 
-  const Food = ["A", "C", "G", "T", "U"] as const;
+  export let RNA: boolean = false;
+  const Food = ["A", "C", "G"];
+  Food.push(RNA ? "U" : "T");
   type FoodCell = "empty" | typeof Food[number];
-  type SnakeCell = "empty" | "head" | "body";
+  const FoodOpposites: Map<FoodCell, FoodCell> = new Map([
+    ["A", RNA ? "U" : "T"],
+    ["T", "A"],
+    ["U", "A"],
+    ["C", "G"],
+    ["G", "C"],
+  ]);
 
+  type SnakeCell = "empty" | "head" | "body";
   type Dir = "up" | "down" | "left" | "right" | "none";
+
+  type Target = {
+    type: FoodCell;
+    id: number;
+  };
+
   interface State {
     status: "stopped" | "running" | "lost";
     dir: Dir;
     prev_dir: Dir;
     prev_tail: Cell;
+    score: number;
   }
   class Cell {
     food: FoodCell = "empty";
@@ -44,8 +66,11 @@
     dir: "none",
     prev_dir: "none",
     prev_tail: undefined,
+    score: 0,
   };
   let grid: Array<Array<Cell>>;
+  let targets: Array<Target> = [];
+  let target_count: number = 0;
   let snake: Array<[number, number]>;
   let step: number;
   let tick_timeout: number;
@@ -105,7 +130,7 @@
     if (state.status === "running") return;
     if (state.dir === "none") return;
     state.status = "running";
-    if (!DEBUG) {
+    if (!DEBUG_STEP) {
       loop();
     }
   }
@@ -115,6 +140,7 @@
   }
   function reset(): void {
     state.status = "stopped";
+    state.score = 0;
     step = 0;
     grid = [...Array(GRID_SIZE)].map(() =>
       [...Array(GRID_SIZE)].map(() => new Cell())
@@ -144,21 +170,43 @@
     grid[snake[0][1]][snake[0][0]].snake = "head";
   }
 
+  function addTargets(): void {
+    while (targets.length < 5) {
+      targets.push({
+        type: Food[Math.floor(Math.random() * Food.length)],
+        id: target_count,
+      });
+      target_count++;
+    }
+    targets = targets;
+  }
+
   function spawnFood(): void {
-    for (let i = 0; i < 2; i++) {
-      let unoccupied: Array<[number, number]> = [];
-      for (let y = 0; y < GRID_SIZE; y++) {
-        for (let x = 0; x < GRID_SIZE; x++) {
-          if (grid[y][x].empty) {
-            unoccupied.push([x, y]);
-          }
+    let foodCount: Map<FoodCell, number> = new Map();
+    for (const type of Food) {
+      foodCount.set(type, 0);
+    }
+    let unoccupied: Array<[number, number]> = [];
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        let cell: Cell = grid[y][x];
+        if (cell.empty) {
+          unoccupied.push([x, y]);
+        } else if (cell.snake === "empty") {
+          foodCount.set(cell.food, foodCount.get(cell.food) + 1);
         }
       }
-      if (unoccupied.length === 0) {
-        return;
+    }
+    if (unoccupied.length === 0) {
+      return;
+    }
+    for (const [type, count] of foodCount.entries()) {
+      let c = count;
+      while (c < 2 || Math.random() < 0.1) {
+        const r = unoccupied[Math.floor(Math.random() * unoccupied.length)];
+        grid[r[1]][r[0]].food = type;
+        c++; // haha, c++ in ts
       }
-      const r = unoccupied[Math.floor(Math.random() * unoccupied.length)];
-      grid[r[1]][r[0]].food = Food[Math.floor(Math.random() * Food.length)];
     }
   }
 
@@ -173,9 +221,22 @@
     }
 
     let ateFood = false;
-    if (grid[newHead[1]][newHead[0]].food !== "empty") {
-      grid[newHead[1]][newHead[0]].food = "empty";
+    let newHeadCell = grid[newHead[1]][newHead[0]];
+    if (newHeadCell.food !== "empty") {
       ateFood = true;
+      console.log(
+        newHeadCell.food,
+        targets[0].type,
+        FoodOpposites.get(targets[0].type)
+      );
+      if (newHeadCell.food === FoodOpposites.get(targets[0].type)) {
+        state.score += 4;
+      } else {
+        state.score -= 6;
+      }
+      newHeadCell.food = "empty";
+      targets.shift();
+      addTargets();
     }
 
     const snakeBody = snake.slice(0, snake.length - (ateFood ? 0 : 1));
@@ -216,11 +277,14 @@
           stop();
           return;
         case "t":
-          tick();
+          if (!DEBUG_STEP) {
+            tick();
+          }
           return;
         case "Enter":
           reset();
           spawnFood();
+          addTargets();
           return;
       }
     }
@@ -285,6 +349,7 @@
   reset();
   onMount(async () => {
     spawnFood();
+    addTargets();
   });
 </script>
 
@@ -294,35 +359,52 @@
   on:touchmove={handleTouchMove}
 />
 
-<h3 class="text-center font-mono font-bold text-lg md:text-xl">
-  Score: {snake.length}
-</h3>
-<div
-  class="board m-auto"
-  style="grid-template-columns: repeat({GRID_SIZE}, minmax(0, 1fr)); grid-template-rows: repeat({GRID_SIZE}, minmax(0, 1fr));"
->
-  {#each grid as row, x}
-    {#each row as cell, y}
+<div class="m-auto flex flex-row justify-center">
+  <div class="m-8 mt-20 flex flex-col flex-nowrap flex-initial text-center">
+    {#each targets as target, i (target.id)}
       <div
-        class="cell rounded-md sm:rounded-lg md:rounded-xl {cell.value} {cell.connections
-          .map((e) => dir2connect.get(e))
-          .join(' ')}"
-        on:click={() => {
-          if (DEBUG)
-            grid[x][y].food = Food[Math.floor(Math.random() * Food.length)];
-        }}
+        class="m-1 font-mono font-semibold text-lg border-2 border-solid rounded-md p-3 {target.type}"
+        class:target-first={i == 0}
+        animate:flip={{ duration: 300 }}
+        in:fly={{ y: 200, duration: 500 }}
+        out:fly={{ y: -100, duration: 500 }}
       >
-        {#if cell.snake === "empty" && cell.food !== "empty"}
-          <div class="m-auto">
-            {cell.food}
-          </div>
-        {/if}
+        {target.type}
       </div>
     {/each}
-  {/each}
+  </div>
+  <div>
+    <h3 class="text-center font-mono font-bold text-lg md:text-xl">
+      Score: {state.score}
+    </h3>
+    <div
+      class="board flex-none"
+      style="grid-template-columns: repeat({GRID_SIZE}, minmax(0, 1fr)); grid-template-rows: repeat({GRID_SIZE}, minmax(0, 1fr));"
+    >
+      {#each grid as row, x}
+        {#each row as cell, y}
+          <div
+            class="cell rounded-md sm:rounded-lg md:rounded-xl {cell.value} {cell.connections
+              .map((e) => dir2connect.get(e))
+              .join(' ')}"
+            on:click={() => {
+              if (DEBUG_CLICK_FOOD)
+                grid[x][y].food = Food[Math.floor(Math.random() * Food.length)];
+            }}
+          >
+            {#if cell.snake === "empty" && cell.food !== "empty"}
+              <div class="m-auto">
+                {cell.food}
+              </div>
+            {/if}
+          </div>
+        {/each}
+      {/each}
+    </div>
+  </div>
 </div>
 
-{#if lost || process.env.NODE_ENV}
+{#if lost || DEBUG_LOSE}
   <div class="center m-auto mt-3 text-center font-mono">
     <h1 class="text-center">You Lost!</h1>
     <h3 class="text-center">
@@ -334,6 +416,7 @@
       on:click={() => {
         reset();
         spawnFood();
+        addTargets();
       }}
     >
       Start again
@@ -341,13 +424,20 @@
   </div>
 {/if}
 
-<style>
+<style lang="postcss">
   .board {
     width: calc(90vmin - 10rem);
     height: calc(90vmin - 10rem);
     @apply grid;
     @apply gap-0;
     aspect-ratio: 1 / 1;
+  }
+  .target-first {
+    @apply font-black;
+    @apply text-2xl;
+    @apply border-4;
+    @apply transform;
+    @apply scale-110;
   }
   .cell {
     @apply w-full;

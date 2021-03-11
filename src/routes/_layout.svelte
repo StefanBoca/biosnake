@@ -1,3 +1,7 @@
+<script lang="ts">
+  export let segment: string;
+</script>
+
 <svelte:head>
   <title>bioSNAKE</title>
 </svelte:head>
