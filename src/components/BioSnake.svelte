@@ -5,7 +5,9 @@
   const DEBUG = process.env.NODE_ENV === "development" && false;
 
   function tick_delay(): number {
-    return snake.length >= 398 ? 40 ? Math.max(200 * Math.exp(-0.007 * snake.length), 120);
+    return snake.length >= 398
+      ? 40
+      : Math.max(200 * Math.exp(-0.007 * snake.length), 120);
   }
 
   const Food = ["A", "C", "G", "T", "U"] as const;
