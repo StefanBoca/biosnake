@@ -2,10 +2,10 @@
   import { onMount } from "svelte";
 
   const GRID_SIZE = 20;
-  const DEBUG_STEP = process.env.NODE_ENV === "development" && false;
+  const DEBUG = process.env.NODE_ENV === "development" && false;
 
   function tick_delay(): number {
-    return 200;
+    return snake.length >= 398 ? 40 ? Math.max(200 * Math.exp(-0.007 * snake.length), 120);
   }
 
   const Food = ["A", "C", "G", "T", "U"] as const;
@@ -103,7 +103,7 @@
     if (state.status === "running") return;
     if (state.dir === "none") return;
     state.status = "running";
-    if (!DEBUG_STEP) {
+    if (!DEBUG) {
       loop();
     }
   }
@@ -305,11 +305,15 @@
         class="cell rounded-md sm:rounded-lg md:rounded-xl {cell.value} {cell.connections
           .map((e) => dir2connect.get(e))
           .join(' ')}"
-        on:click={() =>
-          (grid[x][y].food = Food[Math.floor(Math.random() * Food.length)])}
+        on:click={() => {
+          if (DEBUG)
+            grid[x][y].food = Food[Math.floor(Math.random() * Food.length)];
+        }}
       >
         {#if cell.snake === "empty" && cell.food !== "empty"}
-          {cell.food}
+          <div class="m-auto">
+            {cell.food}
+          </div>
         {/if}
       </div>
     {/each}
@@ -354,6 +358,7 @@
     @apply text-center;
     @apply font-mono;
     @apply font-bold;
+    @apply align-middle;
     font-size: 2vmin;
   }
   .A {
